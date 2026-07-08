@@ -39,6 +39,7 @@ from __future__ import annotations
 from typing import Dict, List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
+from numpy.linalg import LinAlgError
 from pydantic import BaseModel, ConfigDict
 from scipy.optimize import nnls
 from scipy.special import ndtr, ndtri
@@ -51,6 +52,29 @@ UJY = 1e-29  # erg/s/cm2/Hz per microJansky
 PCT_LEVELS = (2.5, 16.0, 50.0, 84.0, 97.5)
 RATIO_CLIP = 1e3     # bound on absurd noise tails of flux ratios
 DIV_FLOOR = 1e-300   # guard for ratio denominators
+
+
+def _nnls(A: np.ndarray, b: np.ndarray) -> Tuple[np.ndarray, float]:
+    """Non-negative least squares, robust to a rank-deficient design.
+
+    When two free lines respond only in the same band their columns are
+    collinear and the normal equations are singular.  The legacy Fortran
+    ``scipy.optimize.nnls`` tolerated this; the rewritten NNLS fails instead,
+    surfacing as ``LinAlgError('Matrix is singular')`` or, on other numpy
+    builds, ``ValueError('zero-size array to reduction ...')``.  On failure we
+    add a negligible Tikhonov ridge (which gives the augmented system full
+    column rank by construction) and report the residual on the original,
+    un-regularised system so the reported chi2 is unaffected.  The ordinary
+    full-rank path is untouched, so exact paper parity is preserved.
+    """
+    try:
+        return nnls(A, b)
+    except (LinAlgError, ValueError):
+        n = A.shape[1]
+        ridge = np.sqrt(np.finfo(float).eps) * (float(np.linalg.norm(A)) or 1.0)
+        coef, _ = nnls(np.vstack([A, ridge * np.eye(n)]),
+                       np.concatenate([b, np.zeros(n)]))
+        return coef, float(np.linalg.norm(A @ coef - b))
 
 
 class Percentiles(BaseModel):
@@ -236,7 +260,7 @@ def fit(photometry: Mapping[str, Tuple[float, float]],
         best = None
         for beta in beta_grid:
             A = np.column_stack([cont_column(beta)] + list(cols)) / e[:, None]
-            coef, rnorm = nnls(A, yvec / e)
+            coef, rnorm = _nnls(A, yvec / e)
             if best is None or rnorm < best[0]:
                 best = (rnorm, float(beta), coef)
         return best
@@ -271,11 +295,11 @@ def fit(photometry: Mapping[str, Tuple[float, float]],
             if beta_sigma > 0:       # marginalise the assumed continuum slope
                 b_i = beta_best + rng.normal(0, beta_sigma)
                 A = np.column_stack([cont_column(b_i)] + cols_i) / e[:, None]
-                cc, _ = nnls(A, (y + rng.normal(0, e)) / e)
+                cc, _ = _nnls(A, (y + rng.normal(0, e)) / e)
                 bb = b_i
             elif config.mc.fast:     # slope pinned at the best fit (fast)
                 A = np.column_stack([cont_column(beta_best)] + cols_i) / e[:, None]
-                cc, _ = nnls(A, (y + rng.normal(0, e)) / e)
+                cc, _ = _nnls(A, (y + rng.normal(0, e)) / e)
                 bb = beta_best
             else:
                 _, bb, cc = solve(y + rng.normal(0, e), cols_i)
@@ -477,7 +501,7 @@ def _sample_posterior(y, e, beta_grid, beta_best, beta_sigma, beta_free,
         r2 = np.empty(len(beta_grid))
         for k, b in enumerate(beta_grid):
             A = np.column_stack([cont_column(b)] + list(line_cols)) / e[:, None]
-            _, rn = nnls(A, yw)
+            _, rn = _nnls(A, yw)
             r2[k] = rn ** 2
         w = np.exp(-0.5 * (r2 - r2.min()))
         w /= w.sum()
@@ -507,7 +531,7 @@ def _sample_posterior(y, e, beta_grid, beta_best, beta_sigma, beta_free,
         else:
             b_i = beta_best
         A = np.column_stack([cont_column(b_i)] + list(cols_i)) / e[:, None]
-        theta0, _ = nnls(A, yw)          # feasible chain start
+        theta0, _ = _nnls(A, yw)          # feasible chain start
         lam = A.T @ A                    # precision matrix
         bvec = A.T @ yw
         usable = np.diag(lam) > 0
