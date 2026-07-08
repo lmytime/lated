@@ -1,0 +1,4 @@
+# sdist extras beyond what setuptools includes automatically
+include CHANGELOG.md
+recursive-include tests *.py
+recursive-include examples *.ipynb

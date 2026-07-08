@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=77"]   # >=77 for the PEP 639 SPDX license expression
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lated"
+version = "0.1.0"
+description = "LATED photometric emission-line recovery: transparent continuum + line fits through real filter curves, with a web application"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Mingyu Li", email = "lmytime@hotmail.com" }]
+keywords = [
+    "astronomy", "astrophysics", "photometry", "emission-lines",
+    "JWST", "NIRCam", "SED", "high-redshift",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Astronomy",
+]
+dependencies = [
+    "numpy>=1.20",
+    "scipy>=1.7",
+    "pydantic>=2.0",
+    "fastapi>=0.100",   # the web app ships with the package, no extra needed
+    "uvicorn>=0.20",
+]
+
+[project.optional-dependencies]
+test = ["pytest", "httpx"]
+
+[project.urls]
+Homepage = "https://github.com/lmytime/lated"
+Repository = "https://github.com/lmytime/lated"
+Documentation = "https://github.com/lmytime/lated#readme"
+
+[project.scripts]
+lated = "lated.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+lated = ["data/filters/*.dat", "server/static/*"]

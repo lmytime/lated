@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LATED — line recovery</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23fffdf9' stroke='%232a2823' stroke-width='1.5'/%3E%3Cpath d='M5 22 L12 22 L14 9 L17 26 L19 15 L21 22 L27 22' stroke='%23b45309' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/app.css?v=12">
+</head>
+<body>
+<header class="masthead">
+  <div class="loading-bar" id="loading-bar" hidden aria-hidden="true"></div>
+  <div class="wordmark">
+    <span class="wordmark-sigil" aria-hidden="true">
+      <svg viewBox="0 0 32 32" width="26" height="26"><path d="M4 22 L12 22 L14 9 L17 26 L19 15 L21 22 L28 22" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </span>
+    <h1>LATED <em>line recovery</em></h1>
+  </div>
+  <nav class="masthead-links">
+    <span class="font-ctl" role="group" aria-label="font size">
+      <button type="button" id="font-dec" class="fs-small" title="smaller text">A&minus;</button>
+      <button type="button" id="font-inc" class="fs-big" title="larger text">A+</button>
+    </span>
+    <a href="/docs" target="_blank" rel="noopener">API</a>
+    <span class="version" id="version">v—</span>
+  </nav>
+</header>
+
+<main class="workbench">
+
+  <!-- ══════════════ SETUP RAIL ══════════════ -->
+  <aside class="rail">
+
+    <section class="panel" id="panel-target">
+      <h2><span class="panel-index">01</span> Target</h2>
+      <div class="mode-switch preset-switch" id="preset-row" role="group" aria-label="window presets"></div>
+      <details class="example-fold">
+        <summary>literature examples</summary>
+        <div class="example-row" id="example-row" role="group" aria-label="worked examples"></div>
+      </details>
+      <div class="mode-switch" data-switch="zmode" role="group" aria-label="redshift input mode">
+        <button type="button" data-val="single" class="on">single z</button>
+        <button type="button" data-val="range">z range</button>
+      </div>
+      <div id="z-inputs" style="margin-top:0.6rem"></div>
+      <p class="z-echo" id="z-echo"></p>
+    </section>
+
+    <section class="panel" id="panel-bands">
+      <h2><span class="panel-index">02</span> Bands</h2>
+      <div class="band-groups" id="band-groups"></div>
+      <div class="coverage-wrap">
+        <svg id="coverage-strip" width="100%" height="64" aria-label="filter coverage and line positions"></svg>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-photometry">
+      <h2><span class="panel-index">03</span> Photometry
+        <span id="sw-unit" role="group" aria-label="flux input unit" title="unit of the values you type; everything is converted to µJy for the fit"></span>
+      </h2>
+      <table class="phot-table" id="phot-table">
+        <thead><tr><th>band</th><th>flux</th><th>&plusmn; err</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="panel-actions">
+        <button class="ghost-btn" id="btn-paste" type="button" title="paste rows: band flux err (TSV/CSV), or flux err per selected band">paste</button>
+      </div>
+    </section>
+
+  </aside>
+
+  <!-- ══════════════ MODEL BOARD ══════════════ -->
+  <section class="board">
+    <section class="panel" id="panel-model">
+      <h2><span class="panel-index">04</span> Model
+        <span class="model-formula">f<sub>&lambda;</sub> = C&thinsp;(&lambda;/&lambda;<sub>0</sub>)<sup>&beta;</sup> + &Sigma;<sub>l</sub> F<sub>l</sub>&thinsp;&delta;(&lambda;&minus;&lambda;<sub>l</sub>)</span>
+      </h2>
+
+      <div class="param-block">
+        <h3>continuum</h3>
+        <div class="param-row">
+          <span class="param-name">C <span class="param-desc">amplitude at &lambda;&#8320;=2&thinsp;&mu;m</span></span>
+          <span class="role-badge role-free" title="the amplitude is always a free, non-negative fit parameter">free &ge; 0</span>
+        </div>
+        <div class="param-row">
+          <span class="param-name">&lambda;<sub>0</sub> <span class="param-desc">pivot [&mu;m]</span></span>
+          <span class="role-badge role-fixed">fixed</span>
+          <span class="dust-inputs"><input type="number" id="in-lam0" step="0.1" min="0.3" value="2" aria-label="pivot wavelength in microns"></span>
+        </div>
+        <div class="param-row">
+          <span class="param-name">&beta; <span class="param-desc">slope</span></span>
+          <div class="role-switch" data-switch="beta">
+            <button type="button" data-val="free" class="on">free</button>
+            <button type="button" data-val="fixed">fixed</button>
+            <button type="button" data-val="range">range</button>
+          </div>
+          <div class="beta-detail" id="beta-detail"></div>
+        </div>
+      </div>
+
+      <div class="param-block">
+        <h3>fixed physics</h3>
+        <div class="param-row">
+          <span class="param-name">z</span>
+          <span class="role-badge role-fixed">fixed</span>
+          <span class="param-echo" id="echo-z"></span>
+        </div>
+        <div class="param-row">
+          <span class="param-name">A<sub>V</sub> <span class="param-desc">dust, differential on ties, &plusmn;&sigma; in MC</span></span>
+          <span class="role-badge role-fixed">fixed</span>
+          <span class="dust-inputs">
+            <input type="number" id="in-av" step="0.1" min="0" value="0" aria-label="A_V">
+            <span class="pm">&plusmn;</span>
+            <input type="number" id="in-avsigma" step="0.01" min="0" value="0.01" aria-label="A_V uncertainty" title="Gaussian A_V uncertainty propagated through the Monte-Carlo (truncated at 0)">
+            <span id="sw-dustlaw" role="group" aria-label="dust law"></span>
+          </span>
+        </div>
+      </div>
+
+      <div class="param-block">
+        <h3>nebular conditions
+          <span class="param-note">sets the Balmer tie ratios (Osterbrock &amp; Ferland 2006)</span>
+        </h3>
+        <div class="nebular-row">
+          <div class="field">
+            <span class="field-label">case</span>
+            <span id="sw-case" role="group" aria-label="recombination case"></span>
+          </div>
+          <div class="field">
+            <span class="field-label">T<sub>e</sub> [K]</span>
+            <span id="sw-te" role="group" aria-label="electron temperature"></span>
+          </div>
+          <div class="field">
+            <span class="field-label">n<sub>e</sub> [cm&#8722;&sup3;]</span>
+            <span id="sw-ne" role="group" aria-label="electron density"></span>
+          </div>
+          <button class="lock-btn" id="btn-balmer-lock" type="button"
+            title="ratios are set by the chosen conditions; unlock to edit them by hand"></button>
+          <span class="param-note" id="caseb-note"></span>
+        </div>
+      </div>
+
+      <div class="param-block">
+        <h3>emission lines <button class="ghost-btn tiny" id="btn-addline" type="button">+ add line</button></h3>
+        <table class="line-table" id="line-table">
+          <thead><tr>
+            <th>line</th><th>&lambda;<sub>rest</sub></th><th>&lambda;<sub>obs</sub></th>
+            <th>in band</th><th>role</th><th>tie</th><th></th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="param-block">
+        <h3>reported ratios</h3>
+        <div id="ratio-rows"></div>
+        <button class="ghost-btn tiny" id="btn-addratio" type="button">+ add ratio</button>
+      </div>
+
+      <div class="param-block">
+        <h3>error budget</h3>
+        <div class="field-grid">
+          <div class="field"><span class="field-label">method</span>
+            <span id="sw-method" role="group" aria-label="MC method" title="posterior: truncated-Gaussian posterior of the amplitudes, boundary-safe limits (default). bootstrap: resample the photometry and refit; limits can collapse to 0 at the F≥0 boundary."></span>
+          </div>
+          <label class="field"><span class="field-label">MC resamples</span>
+            <input type="number" id="in-nmc" min="10" max="100000" step="50" value="300"></label>
+          <label class="field"><span class="field-label">seed</span>
+            <input type="number" id="in-seed" step="1" value="20260612"></label>
+          <label class="field check"><span class="field-label">fast MC</span>
+            <input type="checkbox" id="in-fast"></label>
+        </div>
+      </div>
+
+      <button class="run-btn" id="btn-run" type="button" disabled>
+        <span class="run-label">Recover line fluxes</span>
+        <span class="run-hint">&#8984;&#9166;</span>
+      </button>
+      <div class="error-banner" id="error-banner" hidden></div>
+    </section>
+  </section>
+
+  <!-- ══════════════ RESULTS STAGE ══════════════ -->
+  <section class="stage" id="stage">
+    <div class="stage-empty" id="stage-empty">
+      <svg viewBox="0 0 120 80" width="150" aria-hidden="true">
+        <path d="M8 62 L38 62 L46 24 L58 70 L66 42 L74 62 L112 62" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/>
+        <circle cx="46" cy="24" r="3" fill="currentColor" opacity="0.7"/>
+        <circle cx="58" cy="70" r="3" fill="currentColor" opacity="0.7"/>
+      </svg>
+      <p>Pick a window preset, enter band fluxes,<br>set every parameter's role, and run the fit.</p>
+    </div>
+
+    <div class="results" id="results" hidden>
+      <div class="warn-banner" id="warn-banner" hidden></div>
+      <div class="headline-row" id="headline-row"></div>
+      <figure class="plot-card">
+        <figcaption>best-fit model through the filter curves &mdash; open squares are the model integrated through each band
+          <button class="ghost-btn tiny icon-btn" id="btn-pdf-sed" type="button" aria-label="save PDF"
+            title="save this figure as a vector PDF (print dialog &rarr; Save as PDF)"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M8 2.5v7m0 0L5 6.7M8 9.5l3-2.8M3 12.5h10" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </figcaption>
+        <svg id="main-plot" width="100%" height="430" role="img" aria-label="photometry, filter curves and best-fit model"></svg>
+        <div class="plot-tip" id="plot-tip" hidden></div>
+      </figure>
+      <figure class="plot-card" id="corner-card" hidden>
+        <figcaption>corner plot &mdash; MC draws of the free parameters (best fit in red)
+          <span class="corner-toggles">
+            <label class="corner-toggle"><input type="checkbox" id="ck-corner-beta" checked>&beta;</label>
+            <label class="corner-toggle"><input type="checkbox" id="ck-corner-av">A<sub>V</sub></label>
+          </span>
+          <button class="ghost-btn tiny icon-btn" id="btn-pdf-corner" type="button" aria-label="save PDF"
+            title="save this figure as a vector PDF (print dialog &rarr; Save as PDF)"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M8 2.5v7m0 0L5 6.7M8 9.5l3-2.8M3 12.5h10" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </figcaption>
+        <svg id="corner-plot" width="100%" height="520" role="img" aria-label="posterior corner plot of the free parameters"></svg>
+      </figure>
+      <div class="result-grid">
+        <section class="result-card">
+          <h3>line fluxes <span class="unit-tag">erg s<sup>&minus;1</sup> cm<sup>&minus;2</sup></span></h3>
+          <table class="out-table" id="flux-table"></table>
+        </section>
+        <section class="result-card">
+          <h3>fit summary</h3>
+          <table class="out-table" id="summary-table"></table>
+          <div class="panel-actions">
+            <button class="ghost-btn" id="btn-json" type="button">download JSON</button>
+            <button class="ghost-btn" id="btn-share" type="button">copy share link</button>
+          </div>
+        </section>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="colophon">
+  <p class="colophon-cite">
+    <code>lated</code> is developed by <strong>Mingyu Li</strong> and released with LATED Paper&nbsp;I.
+    If this tool contributes to your research, please cite
+    <em>Li&nbsp;et&nbsp;al. (2026, LATED Paper&nbsp;I)</em>.
+  </p>
+</footer>
+
+<script type="module" src="/static/app.js?v=12"></script>
+</body>
+</html>

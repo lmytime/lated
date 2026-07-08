@@ -1,0 +1,14 @@
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+
+# packaging
+build/
+dist/
+
+# tooling
+.pytest_cache/
+.ipynb_checkpoints/
+.DS_Store
