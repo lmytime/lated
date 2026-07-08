@@ -337,10 +337,11 @@ input:focus-visible, select:focus-visible, button:focus-visible {
 .row-del:hover { color: var(--rose); }
 
 /* ── ratios ───────────────────────────────────────────────────────────── */
-.ratio-row { display: flex; align-items: center; gap: 0.4rem; padding: 0.22rem 0; flex-wrap: wrap; }
-.ratio-row input[type="text"] { width: 5.2rem; }
-.ratio-row select { width: auto; }
-.ratio-slash { color: var(--ink-faint); }
+.ratio-row { display: flex; align-items: center; gap: 0.4rem; padding: 0.22rem 0; flex-wrap: nowrap; }
+.ratio-row input[type="text"] { width: 3.4rem; flex: none; }
+.ratio-row select { width: auto; min-width: 0; flex: 0 1 auto; }
+.ratio-row .row-del { flex: none; }
+.ratio-slash { color: var(--ink-faint); flex: none; }
 
 /* ── run ──────────────────────────────────────────────────────────────── */
 .run-btn {
@@ -531,8 +532,12 @@ input:focus-visible, select:focus-visible, button:focus-visible {
 .example-fold[open] summary::before { content: "\25be  "; }
 .example-fold .example-row { padding-top: 0.4rem; margin-bottom: 0; }
 
-.preset-switch { margin-bottom: 0.85rem; flex-wrap: wrap; }
-.preset-switch button { font-size: 0.82rem; padding: 0.3rem 0.75rem; }
+/* fill the panel width so all five window buttons stay on one segmented row */
+.preset-switch { margin-bottom: 0.85rem; display: flex; width: 100%; }
+.preset-switch button {
+  flex: 1 1 0; min-width: 0; white-space: nowrap; text-align: center;
+  font-size: 0.74rem; letter-spacing: 0.02em; padding: 0.32rem 0.25rem;
+}
 
 
 /* ── examples: a plain clickable list ─────────────────────────────────── */

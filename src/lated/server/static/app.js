@@ -2,7 +2,7 @@
    State lives in one object; every control re-renders from it; the fit
    config sent to /api/fit is exactly what the parameter board shows. */
 
-import { fmt, renderCorner, renderCoverage, renderMainPlot, svgStandalone, turbo } from "./plot.js?v=12";
+import { fmt, renderCorner, renderCoverage, renderMainPlot, svgStandalone, turbo } from "./plot.js?v=13";
 
 const $ = id => document.getElementById(id);
 /* Segmented option switch: the house control for every option choice.
@@ -217,18 +217,29 @@ const EXAMPLES = [
   { id: "AMORE6", label: "AMORE6 (z=5.725), Morishita+2025", z: 5.7253,
     title: "AMORE6: F356W/F410M/F444W; spectroscopic [O III]/H\u03b2 < 0.33",
     phot: { F356W: [16.8, 3.9], F410M: [10.0, 4.8], F444W: [26.6, 3.1] } },
-  { id: "GLIMPSE", label: "GLIMPSE-16043 (z=6.203), Fujimoto+2025", z: 6.20285,
-    title: "GLIMPSE-16043, Table 5 photometry: NIRCam bands covering H\u03b3\u2013He I; spectroscopic [O III]/H\u03b2 = 1.78 \u00b1 0.18",
+  { id: "GLIMPSE", label: "GLIMPSE-16043 (z=6.203), Fujimoto+2025b", z: 6.20285,
+    title: "GLIMPSE-16043, Fujimoto+2025b photometry: NIRCam bands covering H\u03b3\u2013He I; spectroscopic [O III]/H\u03b2 = 1.78 \u00b1 0.18",
     phot: { F356W: [3.08, 0.49], F410M: [0.78, 0.92],
             F444W: [4.07, 0.49], F480M: [10.95, 1.91] } },
+  { id: "GLIMPSE_2025a", label: "GLIMPSE-16043 (photo-z 6.5), Fujimoto+2025a",
+    zRange: [6.26, 6.53],
+    title: "GLIMPSE-16043, Fujimoto+2025a photometry (differs from the 2025b values); redshift undetermined, so fit over the photo-z range z = 6.26\u20136.53 (z_phot = 6.50 +0.03/\u22120.24)",
+    phot: { F356W: [3.94, 0.74], F410M: [0.71, 1.21],
+            F444W: [4.85, 0.67], F480M: [12.54, 2.47] } },
 ];
 
 function applyExample(ex) {
   state.preset = null;
   state.exampleId = ex.id;
-  state.zMode = "single";
-  state.z = ex.z;
-  state.zSigma = 0;
+  if (ex.zRange) {                       // undetermined redshift -> photo-z range
+    state.zMode = "range";
+    state.zMin = ex.zRange[0];
+    state.zMax = ex.zRange[1];
+  } else {
+    state.zMode = "single";
+    state.z = ex.z;
+    state.zSigma = 0;
+  }
   state.unit = "nJy";
   state.betaMode = "fixed";
   state.beta = -2.0;
@@ -1055,13 +1066,6 @@ function wireStatic() {
   });
 
 
-  $("btn-paste").onclick = async () => {
-    let text;
-    try { text = await navigator.clipboard.readText(); }
-    catch { text = prompt("paste rows: band flux err — or flux err per selected band"); }
-    if (text) parsePaste(text);
-  };
-
   $("btn-addline").onclick = () => {
     const name = prompt("line name (e.g. CIII1909):");
     if (!name) return;
@@ -1116,32 +1120,6 @@ function wireStatic() {
       setTimeout(() => { $("btn-share").textContent = "copy share link"; }, 1500);
     } catch { /* clipboard unavailable */ }
   };
-}
-
-function parsePaste(text) {
-  const rows = text.trim().split(/[\r\n]+/).map(r =>
-    r.trim().split(/[,\t; ]+/).filter(Boolean));
-  let assigned = 0;
-  for (const row of rows) {
-    if (row.length >= 3 && isNaN(parseFloat(row[0]))) {
-      const [band, f, e] = row;
-      const match = state.meta.filters.find(x =>
-        x.name.toLowerCase() === band.toLowerCase());
-      if (match) {
-        if (!state.bands.includes(match.name)) toggleBand(match.name, true);
-        state.phot[match.name] = { flux: parseFloat(f), err: parseFloat(e) };
-        assigned++;
-      }
-    }
-  }
-  if (!assigned) {   // fall back: flux err pairs in selected-band order
-    const nums = rows.flat().map(parseFloat).filter(v => !isNaN(v));
-    state.bands.forEach((b, i) => {
-      if (nums.length >= 2 * i + 2)
-        state.phot[b] = { flux: nums[2 * i], err: nums[2 * i + 1] };
-    });
-  }
-  renderPhotTable();
 }
 
 boot();
