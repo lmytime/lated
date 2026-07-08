@@ -19,8 +19,10 @@ from typing import Dict, Iterator, List, Optional, Tuple
 
 import numpy as np
 
-# numpy >= 2 renames trapz; keep one alias for both.
-_trapz = getattr(np, "trapezoid", np.trapz)
+# numpy >= 2 renames trapz -> trapezoid and drops the old name; pick lazily so
+# we never touch the removed np.trapz on numpy 2.x (getattr's default arg would
+# still be evaluated eagerly and raise).
+_trapz = np.trapezoid if hasattr(np, "trapezoid") else np.trapz
 
 C_AA = 2.99792458e18  # speed of light [AA/s]
 
