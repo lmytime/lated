@@ -2,7 +2,7 @@
    State lives in one object; every control re-renders from it; the fit
    config sent to /api/fit is exactly what the parameter board shows. */
 
-import { fmt, renderCorner, renderCoverage, renderMainPlot, svgStandalone, turbo } from "./plot.js?v=13";
+import { fmt, renderCorner, renderCoverage, renderMainPlot, svgStandalone, turbo } from "./plot.js?v=15";
 
 const $ = id => document.getElementById(id);
 /* Segmented option switch: the house control for every option choice.
@@ -92,7 +92,7 @@ function sortBands() {
 
 const LINE_LABELS = {
   Halpha: "Hα", Hbeta: "Hβ", Hgamma: "Hγ", Hdelta: "Hδ", Hepsilon: "Hε",
-  OIII5007: "[O III]5007", OIII4959: "[O III]4959", OII3727: "[O II]3727",
+  OIII5007: "[O III]", OIII4959: "[O III]4959", OII3727: "[O II]3727",
   NeIII3869: "[Ne III]", HeI10830: "He I 1.08µm", NII6584: "[N II]",
   SII6717: "[S II]6717", SII6731: "[S II]6731", PaBeta: "Paβ",
 };

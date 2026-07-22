@@ -148,11 +148,11 @@ export function renderMainPlot(svg, tip, d) {
   }
   const xl = el("text", { x: m.l + iw / 2, y: H - 12, "text-anchor": "middle",
     fill: "var(--ink)", "font-size": 19, "font-family": "var(--mono)" }, svg);
-  xl.textContent = "observed wavelength  [µm]";
+  xl.textContent = "Observed wavelength  [µm]";
   const yl = el("text", { x: 24, y: m.t + ih / 2, fill: "var(--ink)",
     "font-size": 19, "font-family": "var(--mono)",
     transform: `rotate(-90 24 ${m.t + ih / 2})` }, svg);
-  yl.textContent = `fν  [${d.yUnit || "µJy"}]`;
+  yl.textContent = `Flux density fν  [${d.yUnit || "µJy"}]`;
 
   // filter curves along the floor (lower ~22%)
   for (const c of d.curves) {
@@ -237,9 +237,9 @@ export function renderMainPlot(svg, tip, d) {
   // legend (top-right, away from the line-marker labels)
   const lg = el("g", { transform: `translate(${W - m.r - 205}, ${m.t + 16})` }, svg);
   const legend = [
-    ["circle", "photometry", "var(--ink)"],
-    ["square", "model in bands", "var(--amber)"],
-    ["line", "best-fit model", "var(--cyan)"],
+    ["circle", "Observed photometry", "var(--ink)"],
+    ["square", "Model photometry", "var(--amber)"],
+    ["line", "Best-fit model", "var(--cyan)"],
   ];
   legend.forEach(([kind, label, col], i) => {
     const y = i * 25;
@@ -710,7 +710,7 @@ export function svgStandalone(svg) {
   const bg = document.createElementNS(SVGNS, "rect");
   bg.setAttribute("x", vb.x); bg.setAttribute("y", vb.y);
   bg.setAttribute("width", vb.width); bg.setAttribute("height", vb.height);
-  bg.setAttribute("fill", "#fffdf9");
+  bg.setAttribute("fill", "#ffffff");   // white export background (screen theme is cream)
   clone.insertBefore(bg, clone.firstChild);
   return { text: new XMLSerializer().serializeToString(clone),
            width: vb.width, height: vb.height };
