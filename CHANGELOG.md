@@ -1,18 +1,12 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 (2026-07-27)
+
+The Python API now behaves like the web application out of the box.  Existing
+code keeps working, but results change for anyone who did not pass `mc.method`
+explicitly, so this is a minor-version bump rather than a patch.
 
 ### Changed
-### Added
-- `FitConfig.fixed_slope` and `FitConfig.free_slope`, clearer names for what
-  `FitConfig.three_band` and `FitConfig.paper_default` do.  "Three band" said
-  nothing about what the constructor actually configures: it fixes the
-  continuum slope, which is required at three bands (three data, four
-  unknowns) but equally valid with four, five or more bands whose slope you
-  would rather assume than fit (the bundled GLIMPSE-16043 example uses it with
-  four).  `three_band` and `paper_default` remain as permanent, exact,
-  warning-free aliases: they are the names LATED Paper I uses, and existing
-  code needs no change.
 - **The default Monte-Carlo method is now `posterior`, matching the web
   application.**  Previously the Python API defaulted to `bootstrap` while the
   web app used the posterior, so the same photometry could come back with a
@@ -27,6 +21,17 @@
   for genuine upper limits.  It now follows the reported status there, while
   the bootstrap path keeps the legacy formula that parity pins.
 
+### Added
+- `FitConfig.fixed_slope` and `FitConfig.free_slope`, clearer names for what
+  `FitConfig.three_band` and `FitConfig.paper_default` do.  "Three band" said
+  nothing about what the constructor actually configures: it fixes the
+  continuum slope, which is required at three bands (three data, four
+  unknowns) but equally valid with four, five or more bands whose slope you
+  would rather assume than fit (the bundled GLIMPSE-16043 example uses it with
+  four).  `three_band` and `paper_default` remain as permanent, exact,
+  warning-free aliases: they are the names LATED Paper I uses, and existing
+  code needs no change.
+
 ### Fixed
 - Ratio status no longer depends on the Monte-Carlo seed for weak sources.
   When neither line cleared its own detection threshold the ratio was reported
@@ -39,6 +44,9 @@
   has run into the ratio clip, which is both stable and strictly more
   informative.  Such limits are flagged in `warnings` as denominator-driven.
   Bootstrap results are unchanged (their upper percentile is clip-pinned).
+- `lated.__version__` had been left at 0.1.0 through the 0.1.1 release, so the
+  web application's masthead and the REST API reported a stale version.  It is
+  now bumped together with `pyproject.toml`.
 
 ## 0.1.1 (2026-07-09)
 

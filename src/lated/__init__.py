@@ -22,7 +22,7 @@ from .lines import (BALMER_CASES, BALMER_TABLE, CASE_A_TEMPERATURES,
                     balmer_ratios, case_b_ratios)
 from .presets import WINDOW_PRESETS, WindowPreset
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "ContinuumConfig", "DustConfig", "FitConfig", "LineConfig", "MCConfig",
