@@ -12,18 +12,19 @@ Algorithm (identical to the LATED paper engine,
    error-weighted non-negative least squares problem for the amplitudes;
    keep the beta with the smallest residual norm.
 4. Uncertainties, two methods (``mc.method``):
-   - ``bootstrap`` (paper default): resample the photometry and refit;
-     read percentiles of the refits.  Optionally jitter z (``z_sigma``),
-     the dust screen (``dust.av_sigma``, truncated at A_V >= 0), and,
-     when the slope is fixed, beta (``beta_sigma``), so those
-     systematics enter the error budget.  Caveat: at the non-negativity
-     boundary the refits can collapse to exactly zero, so upper limits on
-     absent lines can undershoot the photometric depth (each line's
-     ``flux_sensitivity_1sig`` is reported, and a warning is issued).
-   - ``posterior``: sample the truncated-Gaussian posterior of the
-     amplitudes (Gaussian likelihood, flat prior on F >= 0) by Gibbs
+   - ``posterior`` (default): sample the truncated-Gaussian posterior of
+     the amplitudes (Gaussian likelihood, flat prior on F >= 0) by Gibbs
      sampling, with the slope drawn from its profile weight over the grid
      (free) or its Gaussian prior (fixed).  Boundary-safe limits.
+   - ``bootstrap`` (reproduces the legacy paper pipeline): resample the
+     photometry and refit; read percentiles of the refits.  Caveat: at the
+     non-negativity boundary the refits can collapse to exactly zero, so
+     upper limits on absent lines can undershoot the photometric depth
+     (each line's ``flux_sensitivity_1sig`` is reported, and a warning is
+     issued).
+   Either way one can optionally jitter z (``z_sigma``), the dust screen
+   (``dust.av_sigma``, truncated at A_V >= 0), and, when the slope is
+   fixed, beta (``beta_sigma``), so those systematics enter the budget.
 5. Report every enabled line's flux (tied lines at their effective ratio
    times the root's draws), rest-frame EWs, the requested line ratios with
    measurement/upper-limit/lower-limit/unconstrained status, and the
@@ -422,18 +423,45 @@ def fit(photometry: Mapping[str, Tuple[float, float]],
         elif num_det:
             status = "lower_limit"
         else:
-            status = "unconstrained"
+            # Neither line clears its own detection threshold.  The ratio's
+            # posterior can still bound it from above: an undetected
+            # denominator widens that bound but does not invalidate it, so we
+            # quote the limit whenever it carries information, and reserve
+            # 'unconstrained' for a bound that has run into the RATIO_CLIP
+            # guard (e.g. bootstrap draws with a zero denominator), where the
+            # upper percentile is an artefact rather than a constraint.
+            # Deciding this on the ratio's own posterior rather than on two
+            # knife-edge per-line tests also makes the label stable against
+            # the Monte-Carlo seed: for a line sitting near the detection
+            # threshold the status no longer flips between 'upper_limit' and
+            # 'unconstrained' from one random stream to the next.
+            informative = bool(rr.size) and float(
+                np.percentile(rr, 97.5)) < 0.5 * RATIO_CLIP
+            status = "upper_limit" if informative else "unconstrained"
+            if informative:
+                warnings.append(
+                    f"ratio {r.name}: neither {r.numerator} nor "
+                    f"{r.denominator} is individually detected, so the quoted "
+                    "upper limit is set by the denominator's posterior and is "
+                    "correspondingly weak")
         pinned = float(np.mean(den <= 0))
         if status == "measured" and pinned > 0.05:
             warnings.append(
                 f"ratio {r.name}: {pinned:.0%} of draws hit a zero "
                 f"denominator and are pinned at {RATIO_CLIP:g} in the "
                 "percentiles; treat the upper percentiles with caution")
+        # ``is_limit`` says the ratio is quoted as an UPPER limit.  Under
+        # bootstrap that is the legacy "numerator consistent with zero" test,
+        # which the parity suite pins; the posterior's draws are strictly
+        # positive so that test can never fire there, and the status decided
+        # above (which uses the posterior's own detection threshold) is the
+        # meaningful statement.
+        is_lim = (status == "upper_limit" if config.mc.method == "posterior"
+                  else bool(num_p.p16 <= 0 or num_p.p50 <= 0))
         ratio_results.append(RatioResult(
             name=r.name, numerator=r.numerator, denominator=r.denominator,
             value=val(min(best_r, RATIO_CLIP), rr),
-            status=status, pinned_fraction=pinned,
-            is_limit=bool(num_p.p16 <= 0 or num_p.p50 <= 0)))
+            status=status, pinned_fraction=pinned, is_limit=is_lim))
 
     # bands reaching blueward of observed Lya: IGM is not in the model
     lya_obs = 1215.67 * (1.0 + config.z)

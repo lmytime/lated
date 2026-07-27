@@ -116,13 +116,18 @@ class DustConfig(BaseModel):
 class MCConfig(BaseModel):
     """Monte-Carlo error budget.
 
-    method='bootstrap' (paper default): resample the photometry ``n`` times
-    and refit; read percentiles of the refits.  Near the non-negativity
-    boundary these can collapse to zero (an undetected line whose band
-    fluctuated low returns an upper limit of exactly 0), so for honest
-    limits prefer method='posterior': sample the truncated-Gaussian
-    posterior of the amplitudes (flat prior on F >= 0) with the slope
-    drawn from its profile weight (free) or Gaussian prior (fixed).
+    method='posterior' (default, and what the web application uses): sample
+    the truncated-Gaussian posterior of the amplitudes (Gaussian likelihood,
+    flat prior on F >= 0) by Gibbs sampling, with the slope drawn from its
+    profile weight (free) or Gaussian prior (fixed).  Its limits are
+    boundary-safe, which is what the metal-poor regime needs.
+
+    method='bootstrap': resample the photometry ``n`` times and refit; read
+    percentiles of the refits.  This reproduces the legacy paper pipeline
+    exactly, but near the non-negativity boundary the refits can collapse to
+    zero (an undetected line whose band fluctuated low returns an upper limit
+    of exactly 0), so prefer the posterior unless you are reproducing those
+    published numbers.
 
     ``fast`` (bootstrap only) pins the slope at the best fit instead of
     re-searching the grid per resample.  ``seed`` fixes the random stream;
@@ -133,7 +138,7 @@ class MCConfig(BaseModel):
     n: int = Field(300, ge=10, le=10000)
     seed: int = 9496
     fast: bool = False
-    method: Literal["bootstrap", "posterior"] = "bootstrap"
+    method: Literal["bootstrap", "posterior"] = "posterior"
     keep_draws: bool = Field(
         False, description="return the (thinned) MC draws of the free "
         "parameters in FitResult.posterior_draws, e.g. for corner plots")
@@ -200,16 +205,43 @@ class FitConfig(BaseModel):
 
     # ---- convenience constructors matching the paper's two modes ----------
     @classmethod
-    def paper_default(cls, z: float, **kwargs) -> "FitConfig":
-        """Multi-band mode: slope fitted, Halpha + [O III] free, Case B ties."""
+    def free_slope(cls, z: float, **kwargs) -> "FitConfig":
+        """Slope fitted: beta is profiled over the grid, Halpha + [O III] free,
+        Case B ties.  Needs enough bands to constrain it (one for the continuum
+        amplitude, one for the slope, and one per free line)."""
         return cls(z=z, **kwargs)
 
     @classmethod
-    def three_band(cls, z: float, beta: float = -2.0, **kwargs) -> "FitConfig":
-        """Selection-band mode: slope fixed (default beta = -2, the metal-poor
-        expectation) with the 0.3 slope prior in the error budget."""
+    def fixed_slope(cls, z: float, beta: float = -2.0, **kwargs) -> "FitConfig":
+        """Slope assumed rather than fitted: fixed at ``beta`` (default -2, the
+        metal-poor expectation) and marginalised over its 0.3 prior in the
+        error budget.
+
+        This is a statement about the *slope*, not about the number of bands.
+        It is required when the bands cannot constrain the slope (with the
+        three LATED selection bands there are three data and four unknowns),
+        but it is equally valid with any larger band set whose slope you would
+        rather assume than fit."""
         return cls(z=z, continuum=ContinuumConfig(beta_mode="fixed", beta=beta),
                    **kwargs)
+
+    # -- aliases -----------------------------------------------------------
+    # Kept permanently, and exactly equivalent to the names above: these are
+    # the names LATED Paper I uses for the two modes.  ``fixed_slope`` /
+    # ``free_slope`` are preferred in new code only because they say what the
+    # constructor actually does (fixing the slope is equally valid with more
+    # than three bands), not because these are going away.
+    @classmethod
+    def three_band(cls, z: float, beta: float = -2.0, **kwargs) -> "FitConfig":
+        """The paper's selection-band mode: an exact alias of
+        :meth:`fixed_slope`."""
+        return cls.fixed_slope(z, beta=beta, **kwargs)
+
+    @classmethod
+    def paper_default(cls, z: float, **kwargs) -> "FitConfig":
+        """The paper's multi-band mode: an exact alias of
+        :meth:`free_slope`."""
+        return cls.free_slope(z, **kwargs)
 
     def with_line_role(self, name: str, role: str,
                        tied_to: Optional[str] = None,

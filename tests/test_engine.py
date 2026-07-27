@@ -136,7 +136,7 @@ def test_line_outside_coverage_flagged():
 def test_three_band_mode_fixes_beta():
     phot = {"F200W": (0.0136, 0.0019), "F277W": (0.0249, 0.0016),
             "F356W": (0.0040, 0.0014)}
-    res = fit(phot, FitConfig.three_band(3.05))
+    res = fit(phot, FitConfig.fixed_slope(3.05))
     assert res.beta.best == -2.0
     assert res.beta_role == "fixed"
     assert res.ndof == 0    # 3 bands - C - 2 free lines (beta not counted)
@@ -212,3 +212,28 @@ def test_contaminant_mode():
     lines = {l.name: l for l in res.lines}
     ha = lines["Halpha"].flux.best
     assert lines["NII6584"].flux.best == pytest.approx(ha * 0.35 / 3)
+
+
+def test_fixed_slope_accepts_more_than_three_bands():
+    """fixed_slope is a statement about the slope, not the band count: it must
+    work with any band set (the old name 'three_band' implied otherwise)."""
+    phot = synth_photometry(strong_line_ews())          # 5 bands
+    assert len(phot) > 3
+    res = fit(phot, FitConfig.fixed_slope(Z))
+    assert res.beta_role == "fixed"
+    assert res.beta.best == -2.0
+
+
+def test_config_aliases_are_exact_and_silent():
+    """three_band/paper_default are permanent aliases: identical configs, and
+    no warning (they are the names Paper I uses)."""
+    import warnings as _w
+    with _w.catch_warnings(record=True) as caught:
+        _w.simplefilter("always")
+        alias = FitConfig.three_band(Z, beta=-2.1)
+        alias_free = FitConfig.paper_default(Z)
+    assert caught == [], [str(c.message) for c in caught]
+    assert alias.model_dump() == FitConfig.fixed_slope(Z, beta=-2.1).model_dump()
+    assert alias_free.model_dump() == FitConfig.free_slope(Z).model_dump()
+    # the default beta matches the documented three-band value
+    assert FitConfig.three_band(Z).continuum.beta == -2.0

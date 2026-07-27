@@ -24,7 +24,7 @@ def test_bootstrap_limit_can_collapse_but_is_warned():
     fluctuates 2.5 sigma low.  Bootstrap collapses to a zero upper limit;
     the engine must at least warn about it."""
     phot = shifted_photometry("F200W", -2.5)
-    res = fit(phot, FitConfig(z=Z))
+    res = fit(phot, FitConfig(z=Z, mc={"method": "bootstrap"}))
     o3 = {l.name: l for l in res.lines}["OIII5007"]
     if o3.flux.percentiles.p975 < 0.5 * o3.flux_sensitivity_1sig:
         assert any("boundary artefact" in w for w in res.warnings), res.warnings
@@ -46,7 +46,7 @@ def test_posterior_limit_respects_depth():
 def test_posterior_matches_bootstrap_when_well_detected():
     """For strong lines away from the boundary the two methods must agree."""
     phot = synth_photometry(strong_line_ews(), snr=30.0)
-    rb = fit(phot, FitConfig(z=Z, mc={"n": 400}))
+    rb = fit(phot, FitConfig(z=Z, mc={"n": 400, "method": "bootstrap"}))
     rp = fit(phot, FitConfig(z=Z, mc={"n": 400, "method": "posterior"}))
     for name in ("Halpha", "OIII5007"):
         fb = {l.name: l for l in rb.lines}[name].flux
@@ -62,13 +62,51 @@ def test_ratio_lower_limit_status():
     limit on R3 -- a state the paper engine could not represent."""
     phot = {"F150W": (0.05, 0.01), "F200W": (0.50, 0.01), "F277W": (0.05, 0.01),
             "F356W": (0.05, 0.01), "F444W": (0.045, 0.01)}
-    res = fit(phot, FitConfig(z=Z))
+    res = fit(phot, FitConfig(z=Z, mc={"method": "bootstrap"}))
     r3 = res.ratios[0]
     assert r3.status in ("lower_limit", "unconstrained"), r3
     assert not r3.is_limit          # not an UPPER limit
     assert r3.pinned_fraction > 0.1
     # best is bounded (the paper engine returned ~1e284 here)
     assert r3.value.best <= 1e3
+
+
+# photometry of a real faint GOODS-S source (all three bands at S/N ~ 3-4)
+# whose Halpha and [O III] are each individually undetected: the per-line
+# detection tests sit on their threshold, so the status used to flip between
+# 'upper_limit' and 'unconstrained' with the Monte-Carlo seed alone.
+_WEAK_PHOT = {"F277W": (1.642742e-3, 0.376376e-3),
+              "F356W": (1.649971e-3, 0.424756e-3),
+              "F444W": (1.488542e-3, 0.487806e-3)}
+_WEAK_Z = 4.3624
+
+
+def _weak_cfg(seed, method="posterior"):
+    return FitConfig(z=_WEAK_Z,
+                     continuum={"beta_mode": "fixed", "beta": -2.0},
+                     dust={"av": 0.0, "av_sigma": 0.0},
+                     mc={"n": 300, "seed": seed, "method": method})
+
+
+def test_weak_ratio_reports_limit_not_unconstrained():
+    """With neither line individually detected the ratio posterior can still
+    bound R3 from above; the engine must quote that limit instead of
+    discarding it, and the label must not depend on the MC seed."""
+    seen = set()
+    for seed in (11, 22, 33, 44):
+        r3 = fit(_WEAK_PHOT, _weak_cfg(seed)).ratios[0]
+        seen.add(r3.status)
+        assert 0 < r3.value.percentiles.p975 < 1e3   # an informative bound
+    assert seen == {"upper_limit"}, seen
+
+
+def test_weak_ratio_bootstrap_stays_unconstrained():
+    """The bootstrap counterpart collapses against the F >= 0 boundary, so its
+    upper percentile is pinned at the ratio clip and carries no information:
+    that case must still be reported as unconstrained (paper behaviour)."""
+    r3 = fit(_WEAK_PHOT, _weak_cfg(20260612, method="bootstrap")).ratios[0]
+    assert r3.status == "unconstrained"
+    assert r3.value.percentiles.p975 >= 1e3
 
 
 def test_ratio_measured_status():
@@ -105,7 +143,7 @@ def test_blueward_of_lya_warning():
     """F090W at z=6.1 lies entirely blueward of observed Lya (0.86 um)."""
     phot = {"F090W": (0.01, 0.005), "F356W": (0.02, 0.005),
             "F444W": (0.09, 0.005), "F410M": (0.015, 0.006)}
-    res = fit(phot, FitConfig.three_band(6.1, mc={"n": 50}), default_filters())
+    res = fit(phot, FitConfig.fixed_slope(6.1, mc={"n": 50}), default_filters())
     assert any("blueward" in w for w in res.warnings), res.warnings
 
 

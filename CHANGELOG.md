@@ -1,5 +1,45 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+### Added
+- `FitConfig.fixed_slope` and `FitConfig.free_slope`, clearer names for what
+  `FitConfig.three_band` and `FitConfig.paper_default` do.  "Three band" said
+  nothing about what the constructor actually configures: it fixes the
+  continuum slope, which is required at three bands (three data, four
+  unknowns) but equally valid with four, five or more bands whose slope you
+  would rather assume than fit (the bundled GLIMPSE-16043 example uses it with
+  four).  `three_band` and `paper_default` remain as permanent, exact,
+  warning-free aliases: they are the names LATED Paper I uses, and existing
+  code needs no change.
+- **The default Monte-Carlo method is now `posterior`, matching the web
+  application.**  Previously the Python API defaulted to `bootstrap` while the
+  web app used the posterior, so the same photometry could come back with a
+  different error budget (and, near the detection threshold, a different ratio
+  status) depending on which interface you used.  Every other default already
+  agreed (300 draws, seed 9496, A_V jitter 0.01, free slope), so `method` was
+  the last divergence.  Pass `mc={"method": "bootstrap"}` explicitly to
+  reproduce the legacy paper pipeline; the parity suite now does so.
+- `RatioResult.is_limit` is method-aware.  It was the bootstrap-only test
+  "numerator's 16th percentile <= 0", which can never fire on the posterior's
+  strictly positive draws, so under the posterior it silently reported `False`
+  for genuine upper limits.  It now follows the reported status there, while
+  the bootstrap path keeps the legacy formula that parity pins.
+
+### Fixed
+- Ratio status no longer depends on the Monte-Carlo seed for weak sources.
+  When neither line cleared its own detection threshold the ratio was reported
+  as `unconstrained`, even though its posterior still bounded the ratio from
+  above.  Because that threshold was a hard cut on noisy percentile estimates,
+  a source sitting near it flipped between `upper_limit` and `unconstrained`
+  from one random stream to the next (observed: 14 of 40 seeds on a real
+  faint source).  The engine now quotes the limit whenever the ratio's own
+  posterior carries information, and reserves `unconstrained` for a bound that
+  has run into the ratio clip, which is both stable and strictly more
+  informative.  Such limits are flagged in `warnings` as denominator-driven.
+  Bootstrap results are unchanged (their upper percentile is clip-pinned).
+
 ## 0.1.1 (2026-07-09)
 
 Compatibility fixes for newer NumPy and SciPy, plus web-app refinements.

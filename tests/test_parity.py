@@ -99,17 +99,19 @@ PCTS = ["p025", "p16", "p50", "p84", "p975"]
 
 def new_config(z, legacy_cfg, kw):
     kw = dict(kw)
-    # pin the legacy defaults: the package now defaults to seed 9496 and
-    # an A_V jitter of 0.01, neither of which the paper engine has
+    # pin the legacy defaults: the package now defaults to the posterior
+    # sampler, seed 9496 and an A_V jitter of 0.01, none of which the paper
+    # engine has (it is bootstrap-only)
     extra = {"z_sigma": kw.pop("z_sigma", 0.0),
              "mc": {"n": legacy_cfg.get("nmc", 300), "seed": 20260612,
+                    "method": "bootstrap",
                     "fast": kw.pop("fast", False)},
              "dust": {"av": kw.pop("dust_av", 0.0) and legacy_cfg["dust_av"],
                       "av_sigma": 0.0}}
     if kw.pop("three_band", False):
-        cfg = FitConfig.three_band(z, beta=legacy_cfg["fix_beta"], **extra)
+        cfg = FitConfig.fixed_slope(z, beta=legacy_cfg["fix_beta"], **extra)
     else:
-        cfg = FitConfig.paper_default(z, **extra)
+        cfg = FitConfig.free_slope(z, **extra)
     hbf = kw.pop("hb_factor", None)
     if hbf:
         cfg = cfg.with_line_role("Hbeta", "tied", tied_to="Halpha",

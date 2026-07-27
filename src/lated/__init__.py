@@ -5,7 +5,7 @@ transmission curves to recover line fluxes, rest EWs and line ratios
 (with upper limits) from broad/medium-band photometry.
 
 >>> from lated import FitConfig, fit
->>> cfg = FitConfig.three_band(z=3.05)          # paper 3-band mode
+>>> cfg = FitConfig.fixed_slope(z=3.05)         # slope assumed, not fitted
 >>> res = fit({"F200W": (0.0136, 0.0019),
 ...            "F277W": (0.0249, 0.0016),
 ...            "F356W": (0.0040, 0.0014)}, cfg)

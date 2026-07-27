@@ -54,7 +54,7 @@ photometry = {"F200W": (0.0136, 0.0019),   # {band: (flux, error)} in microJansk
               "F277W": (0.0249, 0.0016),
               "F356W": (0.0040, 0.0014)}
 
-res = fit(photometry, FitConfig.three_band(z=3.193))
+res = fit(photometry, FitConfig.fixed_slope(z=3.193))
 print(res.ratios[0].status)                # 'upper_limit', 'measured', ...
 ```
 
