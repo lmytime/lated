@@ -1,5 +1,51 @@
 # Changelog
 
+## 0.3.0 (2026-09-21)
+
+Web-app figure exports redrawn to publication quality; the fit engine and API
+are untouched (all 66 tests unchanged).
+
+### Changed
+- **SED panel**: the line-ID labels moved above the axes frame (they can no
+  longer collide with the model curve), band-name labels are drawn in a
+  darkened variant of the filter color for contrast, and the wavelength and
+  flux axes gained minor ticks.  Print exports narrow the data area so the
+  panel pairs with the corner plot across a journal text width.
+- **SED line labels**: doublet members now share one species label at their
+  mean position (so "[O III]" marks the pair instead of one member), and
+  crowded labels are nudged apart with a thin connector back to their line
+  instead of being dropped, so close pairs such as Hβ and [O III] both stay
+  labelled; only labels closer than half a pitch to a kept one are dropped.
+- **SED highlight**: the reported ratio's numerator complex (the line plus
+  everything tied to it, e.g. the [O III] doublet for R3) is drawn in the
+  highlight red, in the model curve, its dashed markers, and its label.
+- **Worked examples run 3000 Monte-Carlo draws** (the interactive default
+  stays at 300): the examples quote published 2-sigma limits, and a 97.5th
+  percentile from 300 draws still carries ~0.05 of sampling scatter, enough
+  for the same source to display a different limit on every seed.  At 3000
+  draws the CR3 example reproduces the converged limit ([O III]/Hβ < 0.78).
+- **Fixed: corner best-fit cross-hairs and outlier dots had vanished.**  The
+  off-diagonal block's smoothing kernel was named `K`, shadowing the font
+  scale, so the print-scaled cross-hair arms and dot radii evaluated to NaN
+  (and the contour widths silently fell back to the 1px default).  The
+  kernel is renamed and the crosses, the beyond-2-sigma dots, and the
+  2px/3px contour weights are back.
+- **Corner typography**: exponents in the scale and unit labels are now true
+  raised tspans of ordinary glyphs instead of unicode superscript characters
+  (Helvetica lacks most of that block, so strings like ×10⁻¹⁸ mixed a
+  fallback font into the digits), and the stacked +upper/−lower error
+  fragments in the titles start at exactly the same measured x instead of an
+  estimated dx back-shift that left them visibly misaligned.
+- **Corner panel**: axis ticks are round numbers on a 1/2/2.5/5 step, never
+  rotated, thinned instead of shrunk when they would crowd; the axis-label
+  stacks track the margin instead of sitting at a fixed offset; the title,
+  label, tick, and unit font sizes were rebalanced (titles no longer dominate);
+  strokes, dash patterns, and marker sizes scale with the export factor so the
+  printed weight matches the on-screen weight.
+- **Export scales** (`PRINT_K`) retuned: at the matched reproduction height the
+  two panels now carry the same physical text size, about 7.5 pt ticks and
+  8.5 pt labels at a 220 pt figure height.
+
 ## 0.2.0 (2026-07-27)
 
 The Python API now behaves like the web application out of the box.  Existing

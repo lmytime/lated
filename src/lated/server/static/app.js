@@ -2,7 +2,17 @@
    State lives in one object; every control re-renders from it; the fit
    config sent to /api/fit is exactly what the parameter board shows. */
 
-import { fmt, renderCorner, renderCoverage, renderMainPlot, svgStandalone, turbo } from "./plot.js?v=15";
+import { fmt, renderCorner, renderCoverage, renderMainPlot, svgStandalone, turbo } from "./plot.js?v=31";
+
+/* Figure export scale, per panel.  Matched-height side-by-side reproduction
+   across a journal text width (about 220 pt tall each) gives the wide SED
+   panel a larger printed fraction of its canvas than the square corner
+   panel, so the corner needs the larger factor for the two to carry the
+   same physical text size (about 7.5 pt ticks / 8.5 pt labels).  The SED
+   export also narrows its data area so the pair fits side by side. */
+const PRINT_K = { sed: 1.12, corner: 2.0 };
+const PRINT_SED_DATAWIDTH = 560;
+let printK = 1;
 
 const $ = id => document.getElementById(id);
 /* Segmented option switch: the house control for every option choice.
@@ -231,6 +241,10 @@ const EXAMPLES = [
 function applyExample(ex) {
   state.preset = null;
   state.exampleId = ex.id;
+  // enough draws for the 2-sigma tail to converge: the worked examples quote
+  // published limits, and a 97.5th percentile from the interactive default of
+  // 300 draws still carries ~0.05 of Monte-Carlo scatter
+  state.nmc = 3000;
   if (ex.zRange) {                       // undetermined redshift -> photo-z range
     state.zMode = "range";
     state.zMin = ex.zRange[0];
@@ -781,6 +795,11 @@ async function renderResults() {
   const phot = buildPhotometry();
   const dispF = state.unit === "nJy" ? 1000 : 1;
   const dispU = state.unit === "nJy" ? "nJy" : "µJy";
+  // the reported ratio's numerator complex (the line itself plus everything
+  // tied to it) is highlighted in the SED panel
+  const hotRoot = res.ratios.length ? res.ratios[0].numerator : null;
+  const isHot = l => hotRoot !== null
+    && (l.name === hotRoot || l.root === hotRoot || l.tied_to === hotRoot);
   renderMainPlot($("main-plot"), $("plot-tip"), {
     bands: res.bands.map(b => ({
       name: b, pivot: pivotOf[b], color: bandColorOf[b],
@@ -796,8 +815,12 @@ async function renderResults() {
     yUnit: dispU,
     lineMarks: res.lines
       .filter(l => l.flux.best > 0 || l.role === "free")
-      .map(l => ({ label: label(l.name), waveObs: l.obs_wave, free: l.role === "free" })),
-  });
+      // doublet members share the species label so the plot can blend them
+      .map(l => ({ label: label(l.name).replace(/\]\d+$/, "]"),
+                   waveObs: l.obs_wave, free: l.role === "free",
+                   hot: isHot(l) })),
+  }, { fontScale: printK,
+       dataWidth: printK !== 1 ? PRINT_SED_DATAWIDTH : undefined });
 
   // posterior corner plot
   const cc = $("corner-card");
@@ -806,7 +829,9 @@ async function renderResults() {
     beta: res.beta.best,
   };
   for (const l of res.lines) bestOf[l.name] = l.flux.best;
-  const FLUX_UNIT = "erg s⁻¹ cm⁻²";
+  // "^{...}" runs render as true raised exponents in the corner plot
+  // (unicode superscript glyphs would mix fonts; see plot.js richLine)
+  const FLUX_UNIT = "erg s^{−1} cm^{−2}";
   const params = [];
   if (res.posterior_draws) {
     const add = (key, lab, unit) => {
@@ -817,7 +842,7 @@ async function renderResults() {
       if (!(mx > mn)) return;               // constant parameter
       params.push({ label: lab, values: v, best: bestOf[key], unit });
     };
-    add("C", "C", FLUX_UNIT + " Å⁻¹");
+    add("C", "C", FLUX_UNIT + " Å^{−1}");
     if (state.cornerShowBeta) add("beta", "β", "");
     if (state.cornerShowAv) add("A_V", "A\u1d65", "mag");
     for (const l of res.lines)
@@ -835,7 +860,7 @@ async function renderResults() {
   }
   if (params.length >= 2) {
     cc.hidden = false;
-    renderCorner($("corner-plot"), params, inset);
+    renderCorner($("corner-plot"), params, inset, { fontScale: printK });
   } else {
     cc.hidden = true;
   }
@@ -1085,8 +1110,21 @@ function wireStatic() {
     renderRatios();
   };
 
-  const exportPdf = (svgEl, title) => {
+  // renderResults is async, so the print re-render must be awaited before
+  // the snapshot, and the screen restored afterwards.
+  const exportSnapshot = async (svgEl, which) => {
+    printK = PRINT_K[which === "corner" ? "corner" : "sed"];
+    try { await renderResults(); } finally { printK = 1; }
     const snap = svgStandalone(svgEl);
+    await renderResults();
+    return snap;
+  };
+  // scripted access for reproducing the paper figures
+  window.latedExportSVG = (which) =>
+    exportSnapshot($(which === "corner" ? "corner-plot" : "main-plot"), which);
+
+  const exportPdf = async (svgEl, title, which) => {
+    const snap = await exportSnapshot(svgEl, which);
     const w = window.open("", "_blank");
     if (!w) { alert("allow pop-ups to export figures"); return; }
     w.document.write(`<!DOCTYPE html><html><head><title>${title}</title>
@@ -1098,8 +1136,8 @@ function wireStatic() {
       </body></html>`);
     w.document.close();
   };
-  $("btn-pdf-sed").onclick = () => exportPdf($("main-plot"), "lated_sed_fit");
-  $("btn-pdf-corner").onclick = () => exportPdf($("corner-plot"), "lated_corner_plot");
+  $("btn-pdf-sed").onclick = () => exportPdf($("main-plot"), "lated_sed_fit", "sed");
+  $("btn-pdf-corner").onclick = () => exportPdf($("corner-plot"), "lated_corner_plot", "corner");
 
   $("btn-json").onclick = () => {
     if (!state.result) return;

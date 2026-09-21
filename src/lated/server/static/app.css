@@ -20,6 +20,9 @@
   --rose: #be123c;
   --green: #15803d;
   --mono: ui-monospace, "SF Mono", Menlo, "Cascadia Code", "DejaVu Sans Mono", monospace;
+  /* Figure text: Helvetica, matching figures/plot_style.py so exported
+     plots sit beside the paper figures without a font change. */
+  --plotfont: Helvetica, "Helvetica Neue", Arial, "Liberation Sans", sans-serif;
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
   --radius: 10px;
   --shadow: 0 1px 2px rgba(90, 75, 40, 0.08), 0 6px 18px rgba(90, 75, 40, 0.07);
@@ -428,6 +431,10 @@ input:focus-visible, select:focus-visible, button:focus-visible {
 .plot-card figcaption .ghost-btn { margin-left: auto; }
 .icon-btn { padding: 0.22rem 0.45rem; display: inline-flex; align-items: center; }
 #main-plot, #corner-plot { display: block; }
+/* All figure text uses the paper's font, including labels drawn without an
+   explicit font-family; svgStandalone() snapshots the computed style, so
+   this is what lands in an exported SVG/PDF. */
+#main-plot text, #corner-plot text, #coverage-strip text { font-family: var(--plotfont); }
 .plot-tip {
   position: absolute; pointer-events: none;
   background: var(--ink); border-radius: 6px;
@@ -468,14 +475,17 @@ input:focus-visible, select:focus-visible, button:focus-visible {
 .datum-dot { fill: var(--ink); }
 .band-square { fill: none; stroke: var(--amber-bright); stroke-width: 1.8; }
 .line-marker { stroke: var(--ink-faint); stroke-dasharray: 2 3; }
-.line-marker-label { fill: var(--ink-dim); font-size: 16px; font-family: var(--mono); }
+.line-marker.hot { stroke: var(--rose); opacity: 0.55; }
+.line-marker-label { fill: var(--ink-dim); font-size: calc(16px * var(--fs-k, 1)); font-family: var(--plotfont); }
+.line-marker-label.hot { fill: var(--rose); }
+.model-path.hot { stroke: var(--rose); }
 .corner-dot { fill: var(--ink-dim); opacity: 0.5; }
 .corner-bar { fill: var(--amber-bright); fill-opacity: 0.35; }
-.corner-frame { fill: none; stroke: var(--ink); stroke-width: 1; }
-.corner-label { fill: var(--ink); font-size: 19px; font-weight: 700; font-family: var(--mono); }
-.corner-tick { fill: var(--ink-dim); font-size: 15px; font-family: var(--mono); }
-.corner-title { fill: var(--ink); font-size: 17px; font-weight: 600; font-family: var(--mono); }
-.corner-best { stroke: var(--rose); stroke-width: 1.2; opacity: 0.85; }
+.corner-frame { fill: none; stroke: var(--ink); stroke-width: calc(1px * var(--fs-k, 1)); }
+.corner-label { fill: var(--ink); font-size: calc(17px * var(--fs-k, 1)); font-weight: 600; font-family: var(--plotfont); }
+.corner-tick { fill: var(--ink-dim); font-size: calc(15px * var(--fs-k, 1)); font-family: var(--plotfont); }
+.corner-title { fill: var(--ink); font-size: calc(15.5px * var(--fs-k, 1)); font-weight: 500; font-family: var(--plotfont); }
+.corner-best { stroke: var(--rose); stroke-width: calc(1.2px * var(--fs-k, 1)); opacity: 0.85; }
 
 /* ── colophon ─────────────────────────────────────────────────────────── */
 .colophon {
