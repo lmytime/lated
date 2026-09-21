@@ -53,7 +53,7 @@ def _downsample(x: np.ndarray, y: np.ndarray, n: int):
 def create_app() -> FastAPI:
     # No CORS middleware: the frontend is served same-origin by this app,
     # and an open localhost API would let any web page drive the fitter.
-    app = FastAPI(title="LATED line recovery", version=__version__)
+    app = FastAPI(title="LATED inference", version=__version__)
     filters = default_filters()
 
     @app.get("/api/meta")

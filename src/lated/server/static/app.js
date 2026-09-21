@@ -1,4 +1,4 @@
-/* LATED line recovery — application logic.
+/* LATED inference — application logic.
    State lives in one object; every control re-renders from it; the fit
    config sent to /api/fit is exactly what the parameter board shows. */
 

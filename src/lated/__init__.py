@@ -1,4 +1,4 @@
-"""lated: photometric emission-line recovery.
+"""lated: photometric emission-line inference.
 
 Fit a transparent continuum + emission-line model through real filter
 transmission curves to recover line fluxes, rest EWs and line ratios
@@ -22,7 +22,7 @@ from .lines import (BALMER_CASES, BALMER_TABLE, CASE_A_TEMPERATURES,
                     balmer_ratios, case_b_ratios)
 from .presets import WINDOW_PRESETS, WindowPreset
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 __all__ = [
     "ContinuumConfig", "DustConfig", "FitConfig", "LineConfig", "MCConfig",

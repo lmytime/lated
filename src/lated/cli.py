@@ -14,7 +14,7 @@ import sys
 def main(argv=None):
     ap = argparse.ArgumentParser(
         prog="lated",
-        description=(__doc__ or "LATED line recovery").splitlines()[0])
+        description=(__doc__ or "LATED inference").splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     ap_serve = sub.add_parser("serve", help="run the web application")
