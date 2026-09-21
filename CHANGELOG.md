@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.3.2 (2026-09-21)
+
+README figure only; the fit engine and API are untouched (all 66 tests
+unchanged).
+
+### Changed
+- **`docs/webapp.png` rebuilt for legibility.**  A README image is read at
+  roughly 900 px wide, so everything in it has to survive being halved.  The
+  previous version failed that test: the chrome was set too small and the full
+  4x4 corner plot, whose axis units are unreadable at any README width, was
+  shrunk into a quarter of the canvas.  The figure now gives the SED real
+  estate, shows only the R3 posterior panel that carries the result, and sets
+  its text about 40 per cent larger throughout.
+- **The figure is authored as HTML/CSS and rendered with headless Chrome**
+  rather than composed in matplotlib, which is what makes a real type system
+  possible (Source Serif 4 for display, Inter for labels, IBM Plex Mono with
+  tabular figures for data).  Both plots remain the app's own PDF exports and
+  the verdict numbers still come from a live run of the packaged API, so
+  neither can drift from the code.
+
 ## 0.3.1 (2026-09-21)
 
 Naming and the README figure; the fit engine and API are untouched (all 66
