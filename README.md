@@ -106,8 +106,8 @@ The web app also exposes a small REST API (`/api/meta`,
 
 ## Citing
 
-If `lated` contributes to your research, please cite Li et al. (2026, LATED
-Paper I).
+If `lated` contributes to your research, please cite the LATED methodology
+paper, Li et al. (2026), [arXiv:2609.24588](https://arxiv.org/abs/2609.24588).
 
 ## Development
 
