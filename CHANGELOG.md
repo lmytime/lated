@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.3 (2026-09-22)
+
+Citation only; the fit engine and API are untouched (all 66 tests unchanged).
+
+### Changed
+- **The citation now points at the methodology paper on arXiv**, Li et al.
+  (2026), [arXiv:2609.24588](https://arxiv.org/abs/2609.24588), in the README
+  and the quickstart notebook.  It previously read "Li et al. (2026, LATED
+  Paper I)" with nothing to follow.  Released so the PyPI project page carries
+  the reference, since PyPI renders the README shipped with the last release.
+
 ## 0.3.2 (2026-09-21)
 
 README figure only; the fit engine and API are untouched (all 66 tests
